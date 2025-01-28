@@ -312,16 +312,15 @@ public class BackpackBlockEntity extends BlockEntity implements MenuProvider, Na
     }
 
     public void openBackpack(Player player, MenuProvider containerSupplier, BlockPos pos) {
-        if(!player.level().isClientSide) {
-            if(this.infiniteAccessUsers.contains(player.getId())) {
-                this.infiniteAccessUsers.remove((Object)player.getId());
-            }
-            NetworkHooks.openScreen((ServerPlayer)player, containerSupplier, buf -> {
-                buf.writeInt(-1);
-                buf.writeBlockPos(pos);
-            });
-            //((ServerPlayer)player).openMenu(containerSupplier, buf -> buf.writeInt(-1).writeBlockPos(pos));
+        if(player.level().isClientSide) return;
+        if(this.infiniteAccessUsers.contains(player.getId())) {
+            this.infiniteAccessUsers.remove((Object)player.getId());
         }
+        NetworkHooks.openScreen((ServerPlayer)player, containerSupplier, buf -> {
+            buf.writeInt(-1);
+            buf.writeBlockPos(pos);
+        });
+        //((ServerPlayer)player).openMenu(containerSupplier, buf -> buf.writeInt(-1).writeBlockPos(pos));
     }
 
     public static FriendlyByteBuf saveSettingsExtraData(FriendlyByteBuf buf, BlockPos pos) {
@@ -331,24 +330,22 @@ public class BackpackBlockEntity extends BlockEntity implements MenuProvider, Na
     }
 
     public void openSettings(Player player, MenuProvider containerSupplier, BlockPos pos) {
-        if(!player.level().isClientSide) {
-            //Set settings user
-            setSettingsUser(player);
-            NetworkHooks.openScreen((ServerPlayer)player, containerSupplier, buf -> saveSettingsExtraData(buf, pos));
-            //((ServerPlayer)player).openMenu(containerSupplier, buf -> saveSettingsExtraData(buf, pos));
-        }
+        if(player.level().isClientSide) return;
+        //Set settings user
+        setSettingsUser(player);
+        NetworkHooks.openScreen((ServerPlayer)player, containerSupplier, buf -> saveSettingsExtraData(buf, pos));
+        //((ServerPlayer)player).openMenu(containerSupplier, buf -> saveSettingsExtraData(buf, pos));
     }
 
     public void openBackpackFromCommand(Player player, MenuProvider containerSupplier, BlockPos pos) {
-        if(!player.level().isClientSide) {
-            //Set user access to infinite if accessing from command
-            if(!this.infiniteAccessUsers.contains(player.getId())) this.infiniteAccessUsers.add(player.getId());
-            NetworkHooks.openScreen((ServerPlayer)player, containerSupplier, buf -> {
-                buf.writeInt(player.getId());
-                buf.writeBlockPos(pos);
-            });
-            //((ServerPlayer)player).openMenu(containerSupplier, buf -> buf.writeInt(player.getId()).writeBlockPos(pos));
-        }
+        if(player.level().isClientSide) return;
+        //Set user access to infinite if accessing from command
+        if(!this.infiniteAccessUsers.contains(player.getId())) this.infiniteAccessUsers.add(player.getId());
+        NetworkHooks.openScreen((ServerPlayer)player, containerSupplier, buf -> {
+            buf.writeInt(player.getId());
+            buf.writeBlockPos(pos);
+        });
+        //((ServerPlayer)player).openMenu(containerSupplier, buf -> buf.writeInt(player.getId()).writeBlockPos(pos));
     }
 
     @Nullable
