@@ -164,47 +164,41 @@ public class BackpackBlockEntity extends BlockEntity implements MenuProvider, Na
     public boolean deploySleepingBag(Level level, BlockPos pos) {
         Direction direction = this.getBlockDirection();
         this.isThereSleepingBag(direction);
+        if (isSleepingBagDeployed()) return false;
+        
+        BlockPos sleepingBagPos1 = pos.relative(direction);
+        BlockPos sleepingBagPos2 = sleepingBagPos1.relative(direction);
+        if(!canPlaceSleepingBag(sleepingBagPos2)) return false;
+        
+        level.playSound(null, sleepingBagPos2, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1.0F);
 
-        if(!isSleepingBagDeployed()) {
-            BlockPos sleepingBagPos1 = pos.relative(direction);
-            BlockPos sleepingBagPos2 = sleepingBagPos1.relative(direction);
+        if(!level.isClientSide) {
+            BlockState sleepingBagState = getProperSleepingBag();
+            level.setBlock(sleepingBagPos1, sleepingBagState.setValue(SleepingBagBlock.FACING, direction).setValue(SleepingBagBlock.PART, BedPart.FOOT).setValue(SleepingBagBlock.CAN_DROP, false), 3);
+            level.setBlock(sleepingBagPos2, sleepingBagState.setValue(SleepingBagBlock.FACING, direction).setValue(SleepingBagBlock.PART, BedPart.HEAD).setValue(SleepingBagBlock.CAN_DROP, false), 3);
 
-            if(canPlaceSleepingBag(sleepingBagPos2)) {
-                level.playSound(null, sleepingBagPos2, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1.0F);
-
-                if(!level.isClientSide) {
-                    BlockState sleepingBagState = getProperSleepingBag();
-                    level.setBlock(sleepingBagPos1, sleepingBagState.setValue(SleepingBagBlock.FACING, direction).setValue(SleepingBagBlock.PART, BedPart.FOOT).setValue(SleepingBagBlock.CAN_DROP, false), 3);
-                    level.setBlock(sleepingBagPos2, sleepingBagState.setValue(SleepingBagBlock.FACING, direction).setValue(SleepingBagBlock.PART, BedPart.HEAD).setValue(SleepingBagBlock.CAN_DROP, false), 3);
-
-                    level.updateNeighborsAt(pos, sleepingBagState.getBlock());
-                    level.updateNeighborsAt(sleepingBagPos2, sleepingBagState.getBlock());
-                }
-
-                setSleepingBagDeployed(true);
-                getWrapper().saveHandler.run();
-                return true;
-            }
+            level.updateNeighborsAt(pos, sleepingBagState.getBlock());
+            level.updateNeighborsAt(sleepingBagPos2, sleepingBagState.getBlock());
         }
-        return false;
+
+        setSleepingBagDeployed(true);
+        getWrapper().saveHandler.run();
+        return true;
     }
 
     public boolean removeSleepingBag(Level level, Direction direction) {
         this.isThereSleepingBag(direction);
-
-        if(isSleepingBagDeployed()) {
-            BlockPos sleepingBagPos1 = getBlockPos().relative(direction);
-            BlockPos sleepingBagPos2 = sleepingBagPos1.relative(direction);
-
-            if(level.getBlockState(sleepingBagPos1).getBlock() instanceof SleepingBagBlock && level.getBlockState(sleepingBagPos2).getBlock() instanceof SleepingBagBlock) {
-                level.playSound(null, sleepingBagPos2, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1.0F);
-                level.setBlock(sleepingBagPos2, Blocks.AIR.defaultBlockState(), 3);
-                level.setBlock(sleepingBagPos1, Blocks.AIR.defaultBlockState(), 3);
-                setSleepingBagDeployed(false);
-                getWrapper().saveHandler.run();
-                return true;
-            }
-        } else {
+        if(!isSleepingBagDeployed()){
+            setSleepingBagDeployed(false);
+            getWrapper().saveHandler.run();
+            return true;
+        }
+        BlockPos sleepingBagPos1 = getBlockPos().relative(direction);
+        BlockPos sleepingBagPos2 = sleepingBagPos1.relative(direction);
+        if(level.getBlockState(sleepingBagPos1).getBlock() instanceof SleepingBagBlock && level.getBlockState(sleepingBagPos2).getBlock() instanceof SleepingBagBlock) {
+            level.playSound(null, sleepingBagPos2, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1.0F);
+            level.setBlock(sleepingBagPos2, Blocks.AIR.defaultBlockState(), 3);
+            level.setBlock(sleepingBagPos1, Blocks.AIR.defaultBlockState(), 3);
             setSleepingBagDeployed(false);
             getWrapper().saveHandler.run();
             return true;
@@ -215,10 +209,9 @@ public class BackpackBlockEntity extends BlockEntity implements MenuProvider, Na
     public boolean isThereSleepingBag(Direction direction) {
         if(level.getBlockState(getBlockPos().relative(direction)).getBlock() instanceof SleepingBagBlock && level.getBlockState(getBlockPos().relative(direction).relative(direction)).getBlock() instanceof SleepingBagBlock) {
             return true;
-        } else {
-            setSleepingBagDeployed(false);
-            return false;
         }
+        setSleepingBagDeployed(false);
+        return false;
     }
 
     public BlockState getProperSleepingBag() {
@@ -249,9 +242,7 @@ public class BackpackBlockEntity extends BlockEntity implements MenuProvider, Na
     }
 
     private void notifyBlockUpdate() {
-        if(getLevel() == null) {
-            return;
-        }
+        if(getLevel() == null) return;
         getLevel().sendBlockUpdated(getBlockPos(), getLevel().getBlockState(getBlockPos()), getLevel().getBlockState(getBlockPos()), 3);
     }
 
@@ -298,15 +289,9 @@ public class BackpackBlockEntity extends BlockEntity implements MenuProvider, Na
     }
 
     public boolean canOpenSettings(Player player) {
-        if(!player.level().isClientSide) {
-            return this.settingsUser == player.getId();
-        } else {
-            if(this.settingsUser == -1) {
-                return true;
-            } else {
-                return this.settingsUser == player.getId();
-            }
-        }
+        if(!player.level().isClientSide) return this.settingsUser == player.getId();
+        if(this.settingsUser == -1) return true;
+        return this.settingsUser == player.getId();
     }
 
     @Override
